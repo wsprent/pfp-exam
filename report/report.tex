@@ -1,0 +1,166 @@
+\documentclass[12pt, a4paper]{article}
+
+\nonstopmode
+\usepackage{algorithm}
+% \usepackage{algcompatible}
+\usepackage{bm}
+\usepackage{bbm}
+\usepackage{algpseudocode}
+\usepackage{amsmath} % flere matematikkommandoer
+\usepackage{amssymb} % flere matematikkommandoer
+\usepackage{arydshln}
+\usepackage[utf8]{inputenc} % æøå
+\usepackage[T1]{fontenc} % mere æøå
+\usepackage{verbatim} % så man kan skrive ren tekst
+\usepackage[all]{xy} % den sidste (avancerede) formel i dokumentet
+\usepackage[margin=1in]{geometry}  % set the margins to 1in on all sides
+\usepackage{graphicx}              % to include figures
+\usepackage{amsfonts}              % for blackboard bold, etc
+\usepackage{amsthm}                % better theorem environments
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{bm}
+\usepackage{pgf}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{stmaryrd}
+\usepackage{mathtools}
+\usepackage{multirow}
+\usepackage{listings}
+\usepackage{subcaption}
+\usepackage[inline]{enumitem}
+\usepackage[round]{natbib}
+\usepackage{breqn}
+\usepackage{tikz}
+\usetikzlibrary{arrows,automata,fit,positioning, shapes, calc, fadings}
+
+% various theorems, numbered by section
+
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{conj}[thm]{Conjecture}
+
+\DeclareMathOperator{\id}{id}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+
+\newcommand{\nn}{\mathcal{N}}
+\newcommand{\uu}{\mathcal{U}}
+\newcommand{\bb}{\mathcal{B}}
+\newcommand{\ee}{\mathrm{e}}
+\newcommand{\rd}[1]{\mathrm{#1}}
+\newcommand{\bd}[1]{\mathbf{#1}}  % for bolding symbols
+\newcommand{\RR}{\mathbb{R}}      % for Real numbers
+\newcommand{\ZZ}{\mathbb{Z}}      % for Integers
+\newcommand{\PP}{\mathbb{P}}      % for Prob
+\newcommand{\EE}{\mathbb{E}}      % for Expectation
+\newcommand{\II}{\mathbbm{1}}      % for Indicator fun
+\newcommand{\NN}{\mathbb{N}}      % for Prob
+\newcommand{\col}[1]{\left[\begin{matrix} #1 \end{matrix} \right]}
+\newcommand{\eqsys}[2]{ \left[\!\!
+    \begin{array}{#1} #2
+    \end{array}
+    \!\!\right]}
+\newcommand{\comb}[2]{\binom{#1^2 + #2^2}{#1+#2}}
+\newcommand{\sint}[1]{\shortintertext{#1}}
+\newcommand{\CTL}[1]{\:\textrm{#1}\:}
+\newcommand{\sat}{\:\:\textrm{\textbf{sat}}\:\:}
+\newcommand{\pr}{\textrm{Pr}}
+\newcommand{\grw}{m_{\mathcal{H}}}
+\newcommand{\dvc}{d_{VC}}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+\newtheorem{Lemma}{Lemma}[section]
+\newtheorem{corollary}{Corollary}[theorem]
+\newcommand{\lstbg}[3][0pt]{{\fboxsep#1\colorbox{#2}{\strut #3}}}
+\newcommand{\kl}{\textrm{kl}}
+\newcommand{\KL}{\textrm{KL}}
+\newcommand{\hyp}{\mathcal{H}}
+\lstdefinelanguage{diff}{
+  basicstyle=\ttfamily\scriptsize,
+  morecomment=[f][\lstbg{red!20}]-,
+  morecomment=[f][\lstbg{green!20}]+,
+  morecomment=[f][\textit]{@@},
+  %morecomment=[f][\textit]{---},
+  %morecomment=[f][\textit]{+++},
+}
+
+\newenvironment{gamedef}
+{%
+ \par\medskip\noindent    
+ \textbf{Game Defintion:} \\ % HEADLINE
+ \noindent For $t = 1,2,...$:
+    \begin{enumerate}[leftmargin=3em,labelsep=1em,beginpenalty=10000]
+    \setlength{\itemsep}{0.2em}
+    \setlength{\parskip}{0.5em}
+    \setlength{\parsep}{0pt}
+}
+{%
+    \end{enumerate}
+}
+\definecolor{eclipseBlue}{RGB}{42,0.0,255}
+\definecolor{eclipseGreen}{RGB}{63,127,95}
+\definecolor{eclipsePurple}{RGB}{127,0,85}
+
+\DeclarePairedDelimiterX{\inp}[2]{\langle}{\rangle}{#1, #2}
+
+\lstset{
+  language={haskell},
+  basicstyle=\ttfamily, % Global Code Style
+  captionpos=b, % Position of the Caption (t for top, b for bottom)
+  extendedchars=true, % Allows 256 instead of 128 ASCII characters
+  tabsize=2, % number of spaces indented when discovering a tab
+  columns=fixed, % make all characters equal width
+  keepspaces=true, % does not ignore spaces to fit width, convert tabs to spaces
+  showstringspaces=false, % lets spaces in strings appear as real spaces
+  breaklines=true, % wrap lines if they don't fit
+  frame=trbl, % draw a frame at the top, right, left and bottom of the listing
+  frameround=tttt, % make the frame round at all four corners
+  framesep=4pt, % quarter circle size of the round corners
+  numbers=left, % show line numbers at the left
+  numberstyle=\small\ttfamily, % style of the line numbers
+  commentstyle=\slshape\bfseries\color{eclipseGreen}, % style of comments
+  keywordstyle=\bfseries\color{eclipsePurple}, % style of keywords
+  stringstyle=\color{eclipseBlue}, % style of strings
+  emphstyle=[1]{\color{eclipseBlue}},
+  moredelim=**[is][\color{red}]{@@}{@@}
+}
+\renewcommand{\thesubsubsection}{\thesection.\alph{subsubsection}}
+\begin{document}
+\author{Chi Pham\\William Sprent}
+\title{PFP Exam Project\\Improving Rasterific}
+\maketitle
+
+\section{Introduction}
+
+\section{Experiments}
+
+\subsection{Primitives}
+
+\begin{lstlisting}[caption={Naively splitting work in two parts}]
+    go !ax !ay !bx !by n cont
+    | n == 0  = runPar $ do
+        a' <- spawnP $ go ax ay mx my 100 []
+        b' <- spawnP $ go mx my bx by 100 []
+        b <- get b'
+        a <- get a'
+        return $ a ++ b ++ cont
+\end{lstlisting}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.85\linewidth]{../threadscope/lines/single-split}
+  \caption{ThreadScope output for parallelising line decomposition.}
+  \label{fig:line-thread}
+\end{figure}
+\subsection{Sorting}
+
+\subsection{Applying Edge Samples}
+
+\section{Conclusion}
+
+
+
+\end{document}
