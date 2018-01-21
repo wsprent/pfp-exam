@@ -134,11 +134,45 @@
 \maketitle
 
 \section{Introduction}
-
+% Noget om generel struktur på raste
+% Noget om par monad
 \section{Experiments}
 
-\subsection{Primitives}
+\subsection{Benchmarks}
 
+\subsection{Primitives}
+Before rasterization, Rasterific works with three different primitive shapes:
+lines, quadratic bezier curves, and cubic bezier curves. Each of these are decomposed
+to an internal type representing raster lines:
+\begin{lstlisting}[caption={\texttt{EdgeSample} type -- represents a raster line.}]
+data EdgeSample = EdgeSample
+  { _sampleX     :: {-# UNPACK #-} !Float -- ^ Horizontal position
+  , _sampleY     :: {-# UNPACK #-} !Float -- ^ Vertical position
+  , _sampleAlpha :: {-# UNPACK #-} !Float -- ^ Alpha
+  , _sampleH     :: {-# UNPACK #-} !Float -- ^ Height
+  }
+\end{lstlisting}
+This decomposition follows a divide-and-conquer strategy. For example, decomposing a line
+involves repeatedly chopping the line in half until both endpoints are in the same pixel.
+
+This pattern seems ripe for parallelisation, however there are a couple of shortfalls:
+\begin{itemize}
+\item The size of the canvas severely restricts the length of a primitive -- there is no reason to ever
+   have a million pixel line.
+ \item The decomposition functions returns the following lazy data structure:
+   \begin{lstlisting}
+     type Producer a = [a] -> [a]\end{lstlisting}
+   presumably save the cost of generating a long list of lists just to concatenate them in the end
+    when the \texttt{EdgeSamples} are sorted.
+  \end{itemize}
+  Nevertheless, we have experimented with parallelising the decomposition of primitives.
+
+\subsubsection{Lines}
+The \texttt{Graphics.Rasterific.Line} module has the \texttt{decomposeLine} function with type
+signature:
+\begin{lstlisting}
+decomposeLine :: Line -> Producer EdgeSample\end{lstlisting}
+We %TODO: finish sentence
 \begin{lstlisting}[caption={Naively splitting work in two parts}]
     go !ax !ay !bx !by n cont
     | n == 0  = runPar $ do
@@ -148,13 +182,55 @@
         a <- get a'
         return $ a ++ b ++ cont
 \end{lstlisting}
-
+This approach proves to not generate enough work for each thread even when only a single split
+is performed. Figure \ref{fig:line-thread} shows ThreadScope out put for only splitting the
+work a single time (per line) on two hardware threads. Even with this course distribution of work
+26731 of 34000 end up being garbage collected, and we only manage to use 25\% of the available
+resources, and running the parallel code with a single thread gives better performance than with
+two.
 \begin{figure}[h!]
   \centering
   \includegraphics[width=0.85\linewidth]{../threadscope/lines/single-split}
-  \caption{ThreadScope output for parallelising line decomposition.}
+  \caption{ThreadScope output for parallelising line decomposition. Shows the output for the
+    \texttt{lines} benchmark.}
   \label{fig:line-thread}
 \end{figure}
+
+Inspecting the spark times (Figure \ref{fig:line-thread-sparks}) in ThreadScope confirms that line
+decomposition does not produce work enough to justify the hassle --
+probably not even to offset any cache locality reduction from working 
+on multiple single cores. Most of the converted sparks are completed instantaniously.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.85\linewidth]{../threadscope/lines/single-split-spark-times}
+  \caption{ThreadScope spark times for Figure \ref{fig:line-thread}}
+  \label{fig:line-thread-sparks}
+\end{figure}
+
+Investigating further, Figures \ref{fig:single-line-thread} and \ref{fig:single-line-thread-sparks}
+show similar results for decomposing a single, \textit{unrealisically} large line where
+ we fork at every 10th recursive call. Again we have
+ weak utilisation and small spark workloads.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.85\linewidth]{../threadscope/lines/single-line-every-10}
+  \caption{ThreadScope output for running line decomposition on a single line with length
+    100000.}
+  \label{fig:single-line-thread}
+\end{figure}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.85\linewidth]{../threadscope/lines/single-line-every-10-spark-times}
+  \caption{ThreadScope output for running line decomposition on a single line with length
+    100000.}
+  \label{fig:single-line-thread-sparks}
+\end{figure}
+
+\subsubsection{Parallelizing Multiple Decomposition Calls}
+
 \subsection{Sorting}
 
 \subsection{Applying Edge Samples}
