@@ -205,7 +205,7 @@ We %TODO: finish sentence
 \end{lstlisting}
 This approach proves to not generate enough work for each thread even when only a single split
 is performed. Figure \ref{fig:line-thread} shows ThreadScope out put for only splitting the
-work a single time (per line) on two hardware threads. Even with this course distribution of work
+work a single time (per line) on two cores. Even with this course distribution of work
 26731 of 34000 end up being garbage collected, and we only manage to use 25\% of the available
 resources, and running the parallel code with a single thread gives better performance than with
 two.
@@ -252,6 +252,83 @@ show similar results for decomposing a single, \textit{unrealisically} large lin
 
 \subsection{Sorting Edge Samples}
 
+After the Primitives have been decomposed into \texttt{EdgeSamples}, they are sorted by their y and then x coordinates (in that order).
+This is done using the \texttt{vector-algorithms} package, such that the vector of \texttt{EdgeSamples} is sorted in place as a mutable vector
+ using an implementation of introsort.
+\begin{lstlisting}[caption={Sorting the edge samples.}]
+sortEdgeSamples :: [EdgeSample] -> V.Vector EdgeSample
+sortEdgeSamples samples = runST $ do
+  -- Resist the urge to make this a storable vector,
+  -- it is actually a pessimisation.
+  mutableVector <- V.unsafeThaw $ V.fromList samples
+  VS.sortBy xyCompare mutableVector
+  V.unsafeFreeze mutableVector
+\end{lstlisting}
+
+Since sparking imperative code is not something you can do by default, and we want spark stats for
+analysis, we can make use of a little hack (see Listing \ref{lst:parst}) which creates a sparkable
+ thunk out of an ST computation found on a post\footnote{\label{note1}\url{https://unlines.wordpress.com/2010/04/21/sparking-imperatives/}}.
+\begin{lstlisting}[label={lst:parst}, caption={\texttt{parST}}]
+parST :: ST s a -> ST s a
+parST m = x `par` return x
+  where
+    x = runST (unsafeIOToST noDuplicate >> unsafeCoerce m)
+\end{lstlisting}
+Obviously, competeting with optimized sequential code from the \texttt{vector-algorithms} package is a
+ bit is a long shot, but for the sake of experiment we wrote a sorting function (based on an example from where we got the \texttt{parST} function),
+ it is a parallel, in-place quicksort (Listing \ref{lst:parsort}) with a depth and size threshold for deciding when to bail out to the intro sort.
+
+ Figure \ref{fig:sorting-thread} shows ThreadScope output for a isolated test of the sorting function.
+ It shows some good pretty alright utilisation of the two cores.
+
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.85\linewidth]{../threadscope/sorting/sorting-final}
+  \caption{ThreadScope output for sorting 1.000.000 \texttt{EdgeSample}s.}
+  \label{fig:sorting-thread}
+\end{figure}
+
+Figure \ref{fig:sorting-thread-zoomed}, shows a zoomed in view of the middle segment of Figure \ref{fig:sorting-thread}.
+This gives us the impression, once again, that we have pretty good utilisation.
+
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.85\linewidth]{../threadscope/sorting/sorting-final-zoom}
+  \caption{ThreadScope output for sorting 1.000.000 \texttt{EdgeSample}s.}
+  \label{fig:sorting-thread-zoomed}
+\end{figure}
+
+This is reflected in some superficial timings (using \texttt{-s}) -- taking 3.2s on one core, 2.2s on two, 1.6s on three, and 1.4s on four. The bad news is that \texttt{MV.sortBy} takes less than a second to sort the same vector.
+
+Even worse, is that loosening up the parallisation threshold (i.e. increasing the spark production)
+greatly decreases performance. Removing the thresholds alltogether results in not being able to get
+ through the 1.000.000 length vector at all.
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.6\linewidth]{../threadscope/sorting/sorting-final-sparks}
+  \caption{ThreadScope spark output for sorting 1.000.000 \texttt{EdgeSample}s.}
+  \label{fig:sorting-thread-sparks}
+\end{figure}
+
+Another symptom of this may be the incredibly low spark conversion rate the sorting function has.
+Figure \ref{fig:sorting-thread-sparks} shows the spark conversion rate from the run shown in
+Figure \ref{fig:sorting-thread}. Only 6 out of 300 sparks are converted, and 159 end up fizzling.
+
+
+If we remove the threshold and decrease the vector size to 100k, we get the conversion rate in
+Figure \ref{fig:sorting-thread-100k-sparks}. We only convert 5 sparks and generate \textit{two hundred thousand}. This should only be possible if we somehow had generated
+a completely unbalanced comparison tree. This implies a performance bug (either in the sorting function
+ itself or the \texttt{parST} hack), but we have been unable to locate it.
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.6\linewidth]{../threadscope/sorting/sorting-100k-sparks}
+  \caption{ThreadScope spark output for sorting 100.000 \texttt{EdgeSample}s!}
+  \label{fig:sorting-thread-100k-sparks}
+\end{figure}
+
+Either way, while we weren't able to generate a method able to sort the \texttt{EdgeSample}s faster
+than the sequential intro-sort, we have at least show that there is some potential for it. This
+ could reached by parallising the \texttt{vector-algorithms} package.
 \subsection{Combining Edge Samples}
 
 \subsection{Multiple Decomposition Calls}
@@ -274,5 +351,53 @@ Streamlining data structures: especially in rasterize, there is a lot of convers
 Perhaps bigger refactoring needed for maximum parallel gains, e.g. flattening the nested parallelism.
 
 \section{Conclusion}
+=======
+\appendix
 
+\section{Code}
+\begin{lstlisting}[label={lst:parsort}, caption={Parallel Sorting}]
+parSort :: (Show e, MV.MVector v e, Ord e) => v s e -> ST s ()
+parSort a = go a $ ceiling $ log fl
+  where
+    fl = fromIntegral $ MV.length a
+    go a d
+      | n < 2 = return ()
+      | d < 1 || n < 1000 = VS.sort a -- Don't bother sparking for smaller Vs
+      | otherwise = do
+          MV.unsafeSwap a 0 mid -- Pivot index > 0
+          p <- MV.unsafeRead a 0 -- Get pivot
+          let rest = MV.unsafeSlice 1 (n-1) a -- Keep pivot in place
+          m' <- MV.unstablePartition (<p) rest -- Partition rest of array
+          MV.unsafeSwap a 0 m' -- Swap pivot back into place m' is the first index of the second partition of rest but the last of a
+          let a1 = MV.unsafeSlice 0 m' a -- {abcd}p   first slice cannot be empty; second can
+          let a2 = MV.unsafeSlice (min (m'+1) n) (n-(min (m'+1) n)) a -- abcdp{efgh}
+          v <- parST $ go a1 (d-1)
+          v2 <- parST $ go a2 (d-1)
+          v `seq` v2 `seq` return ()
+            where
+              n = MV.length a
+              mid = n `div` 2
+\end{lstlisting}%$
+
+
+\begin{lstlisting}[label={lst:sorting}]
+main :: IO ()
+main = do
+  let xs = [x | x <- [1..]] :: [Int]
+      ys = [y*2 | y <- [6..]] :: [Int]
+      list = take 100 [x `mod` 11 | x <- xs]
+      edgesamples = [EdgeSample { _sampleX = fromIntegral  (x `mod` 10),
+                                  _sampleY = fromIntegral (y `mod` 30),
+                                  _sampleAlpha = (1.5::Float),
+                                  _sampleH = (2.1 :: Float)
+                                }
+                    | x <- xs,
+                      y <- ys]
+      pa = take 1000000 edgesamples
+  start <- getCPUTime
+  let sortedPar = sortEdgeSamples pa
+  end <- sortedPar `seq` getCPUTime
+  let time = (fromIntegral (end - start)) / (10^12)
+  printf "Time: %0.9f sec\n" (time :: Double)
+\end{lstlisting}
 \end{document}
