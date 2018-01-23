@@ -214,7 +214,7 @@ We have made parallelisation attempts on a number of different granularities, pa
 \end{figure}
 
 
-\subsection{Benchmarks}
+\subsection{Benchmarks}\label{sec:benchmarks}
 We will make references to some benchmarks further down. This is a short recap of which benchmarks exist in Rasterific and which ones we have added.
 \begin{itemize}
 \item \textbf{Snowflake:} Draws a series of transparent snowflakes on a background. See Figure \ref{fig:snowflakes}. Was added to the Rasterific project
@@ -333,7 +333,7 @@ To investigate further, we wrote a small program that runs \texttt{decomposeLine
   \label{fig:single-line-thread-sparks}
 \end{figure}
 
-\subsection{Sorting Edge Samples}
+\subsection{Sorting Edge Samples}\label{sec:sorting}
 
 After the Primitives have been decomposed into \texttt{EdgeSamples}, they are sorted by their y and then x coordinates (in that order).
 This is done using the \texttt{vector-algorithms} package, such that the vector of \texttt{EdgeSamples} is sorted in place as a mutable vector
@@ -443,7 +443,7 @@ Upon further inspection, we note that if two adjacent \texttt{EdgeSamples} are n
 
 To compute the rows in parallel, we need to split them up. We experimented with two different ways of achieving this: changing the data structure from a \texttt{Vector}, or computing the indices to each row in the \texttt{Vector}. A third option, which was not attempted,  would be to rewrite the sorting logic to also extract the indices at no extra cost.
 
-\subsubsection{Grouping by List or Map}
+\subsubsection{Grouping by List or Map}\label{sec:combine-glist}
 
 In this experiment (see Listing \ref{lst:combinegroup}), we convert the sorted \texttt{Vector} to a list or a map of \texttt{[EdgeSample]s}, where each element is a sorted list of the \texttt{EdgeSamples} belonging to one row. The additional cost of converting back from the \texttt{Vector} again is dwarfed by the cost incurred by sorting the list or map directly. We then use a parallel map over each row and finally concatenate the output into one \texttt{[CoverageSpan]}.
 
@@ -467,7 +467,7 @@ ThreadScope spark information is shown in Figure \ref{fig:combinegrouped-sparks}
 
 Additionally, the sparks are very small, most non-existent in the spark size output. This would indicate that the parallelised workload is too light, e.g. because the \texttt{EdgeSample} rows are not particularly long, or the work is simply not time-consuming enough.
 
-\subsubsection{Grouping by Index}
+\subsubsection{Grouping by Index}\label{sec:combine-vindex}
 
 In this experiment (see Listing \ref{lst:combineindex}), we keep the \texttt{Vector} representation, but make an additional pass over it in which we collect the start and end indices of each row. Similarly to the other approach, we then do a parallel map and a concatenation at the end. This approach shows largely similar performance results to the former, despite not having the overhead of converting between several data structures.
 
@@ -488,7 +488,7 @@ As the decompositions are independent of each other, it should be straightforwar
 
 We do not know if the common use case for Rasterific is likely to be much more complex than the snowflake. This is discussed further in Section \ref{discussion}.
 
-\subsection{Multiple FillOrder Calls}
+\subsection{Multiple FillOrder Calls}\label{sec:fillorder}
 
 At the top-level, the user uses the library by writing a number of high-level drawing commands. Each of these are interpreted into \texttt{DrawOrders}, which place the texture/colour/environment changing commands into a State monad, with each \texttt{DrawOrder} being an actual command to draw some shape. I.e. we are at the granularity of e.g. a circle or a rectangle, each made up of \texttt{Primitives}.
 
@@ -509,7 +509,7 @@ fillWithTexture fillMethod texture els = do
         clipped = foldMap (clip mini maxi) els
         spans = rasterize fillMethod clipped
     lift . mapExec filler $ filter (isCoverageDrawable img) spans
-\end{lstlisting}
+\end{lstlisting} %$
 
 We note that the calls to \texttt{clip} and \texttt{rasterize} are not directly dependent on the \texttt{DrawContext} aside from extracting the width and the height of the image. We can therefore refactor this function\footnote{Note that there are other similar functions \texttt{fillWithTextureNoAA} and \texttt{fillWithTextureAndMask} which we ignore since they are not used by the benchmarks and are largely the same.} into two parts: one that clips and rasterises, and one that applies texture. The first part can then be mapped in parallel over the \texttt{DrawOrders} (see Listing \ref{lst:fillorder}).
 
@@ -558,44 +558,32 @@ It seems for a program with many \texttt{DrawOrders}, there is a good deal of pe
 
 \subsection{Results}
 
-lines 1000, snowflakes 500, bigsquare
-run with -lfs -N2
+Table \ref{tab:benchmark-results} shows the results of running our parallel changes (respectively)
+on the benchmarks from Section \ref{sec:benchmarks}. In particular, the lines benchmark is run
+here with 1000 lines and the snowflake benchmark with 500 flakes, the parallel versions are
+ run with two cores.
 
-master (seq)
-\begin{verbatim}
-lines: 572.6 ms, std dev = 4.488 ms, 
-snowflake: 740.4 ms, 2.149 ms
-bigsquare: 179.3 ms, 1.117 ms
-\end{verbatim}
+ The results are clear: the Sequential Rasterific is the fastest. While the fillorder parallelization
+ produced timings close to the sequential version, we believe that this is more a question of the
+ benchmarks not being challenging enough than the parallized version approximating sequential
+  performance.
+\begin{table}[h!]
+  \centering
+  \begin{tabular}[h!]{|r|c|c|c|}\hline
+    & \multicolumn{3}{|c|}{\textbf{Benchmark}} \\
+    \textbf{Version}&\textbf{Lines}&\textbf{Snowflake}&\textbf{Bigsquare} \\\hline
+    Sequential & 572.6 ms & 740.4 ms & 179.3 ms \\
+    FillOrder (\ref{sec:fillorder}) &  575.4 ms & 769.8ms & 183.3ms \\
+    Sorting (\ref{sec:sorting}) &970.8ms& 1.061 s & 205.2 ms \\
+    Combine (\ref{sec:combine-glist}) & 777.9 ms & 862.1 ms & 214.2 ms \\
+    Combine (\ref{sec:combine-vindex}) & 769.8 ms & 877.3 ms & 198.5 ms \\\hline
+  \end{tabular}                                       
+  \caption{Benchmark results on the various parallisations made above. Parallel version were run with
+   \texttt{+RTS -N2}, that is on two cores.}                         
+  \label{tab:benchmark-results}
+\end{table}
 
-fillorder 3.6
-\begin{verbatim}
-lines: 575.4 ms, 2.656 ms
-snowflake: 769.8 ms, 2.255 ms
-bigsquare: 183.3 ms, 1.453 ms
-\end{verbatim}
-
-sorting 3.3
-\begin{verbatim}
-lines: 970.8 ms, 6.526 ms
-snowflake: 1.061 s, 34.46 ms
-bigsquare: 205.2 ms, 3.414 ms
-\end{verbatim}
-
-combine (grouped list) 3.a
-\begin{verbatim}
-lines: 777.9 ms, 377.4 mikros
-snowflake: 862.1 ms, 4.795 ms
-bigsquare: 214.2 ms, 4.614 ms
-\end{verbatim}
-
-combine (vector index) 3.b
-\begin{verbatim}
-lines: 769.8 ms, 1.482 ms
-snowflake: 877.3 ms, 2.500 ms
-bigsquare: 198.5 ms, 1.644 ms
-\end{verbatim}
-
+Revisions for the fillorder\footnote{\url{https://github.com/wsprent/Rasterific/tree/top-level-par}}, sorting\footnote{\url{https://github.com/wsprent/Rasterific/tree/sorting-dump}}, and combine\footnote{\url{https://github.com/wsprent/Rasterific/tree/combineedgesamples-par}} versions can be found in the footnotes.
 \section{Discussion}\label{discussion}
 
 Discussion of results: why are the results (good/)bad in our specific implementations? (Overhead from parallel execution, garbage collection, especially in the non-parallel parts of the code.)
