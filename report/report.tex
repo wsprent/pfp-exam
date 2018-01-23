@@ -170,7 +170,7 @@ of primitives (Bezier curves - linear, quadratic, and cubic) which are the pumpe
 pipeline decomposes the primitives into raster lines, sorts them, and finally combines them. Finally, a filling strategy and some texture is applied and we have an image.
 
 Based on a discussion in Rasterifics Issue Tracker\footnote{\url{https://github.com/Twinside/Rasterific/issues/32}}, we have focused mainly on the full rasterization pipeline of
-primitives, that is we have looked at parallizing,
+primitives, this includes the following:
 \begin{enumerate}
 \item the decomposition of primitives into \texttt{EdgeSample}s, a very fine-grained task with potential for constant span;
 \item the sorting of \texttt{EdgeSample}s, a known problem with somewhat limited potential for parallism; and,
