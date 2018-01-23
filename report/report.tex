@@ -610,6 +610,16 @@ The work we have done for this report has been somewhat superficial constrained 
 \end{itemize}
 
 \section{Conclusion}
+We have presented some attempts at introducing parallelism into the Rasterific library. These attempts
+have been at different levels of granularity and complexity, but none of them proved to be fruitful.
+Thus we have not managed to make any performance gains.
+
+There were different reasons for this, some of the areas were too fine grained (primitive decomposition, edge sample combination), some too complex (sorting), and
+some end up forcing lazy data structures at too high a cost (fillorder).
+
+In the end we do think there is potential for parallel speedup, but that this must come from a larger restructuring of Rasterific and not just from injecting parallelism
+ into certain areas.
+
 \clearpage
 \appendix
 
