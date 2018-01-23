@@ -211,10 +211,17 @@ We will make references to some benchmarks further down. This is a short recap o
 \begin{itemize}
 \item \textbf{Snowflake:} Draws a series of transparent snowflakes on a background. See Figure \ref{fig:snowflakes}. Was added to the Rasterific project
    shortly before we started our project.
-\item ??
+\item \textbf{BigSquare:} Draws a big pink snowflake (named for legacy reasons). The purpose of this benchmark is to only have one call to the rasteriser containing many \texttt{Primitives}. See Figure \ref{fig:bigsquare-benchmark}.
 \item \textbf{Lines:} Draws a large number of randomly colored lines on a background. See Figure \ref{fig:lines-benchmark}.
   We have added this to benchmark line primitive decomposition.
 \end{itemize}
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.4\linewidth]{../bigsquare}
+  \caption{The output of the \texttt{bigsquare} benchmark.}
+  \label{fig:bigsquare-benchmark}
+\end{figure}
+
 \begin{figure}[h!]
   \centering
   \includegraphics[width=.4\linewidth]{../lines}
@@ -434,7 +441,7 @@ In this experiment (see Listing \ref{lst:combinegroup}), we convert the sorted \
 
 Figure \ref{fig:combinegrouped} shows the utilisation in one run of the \texttt{snowflake} benchmark with 500 snowflakes. The parallelisation benefit is minimal -- a blip on HEC 1 corresponds to the parallel part of rendering one of the snowflakes.
 
- \begin{figure}[h!]
+ \begin{figure}[H]
   \centering
   \includegraphics[width=\linewidth]{../threadscope/combinegrouped/bigflake}
   \caption{ThreadScope output for running the \texttt{snowflake} program with 500 snowflakes.}
@@ -443,7 +450,7 @@ Figure \ref{fig:combinegrouped} shows the utilisation in one run of the \texttt{
 
 ThreadScope spark information is shown in Figure \ref{fig:combinegrouped-sparks}. About half of the sparks are garbage-collected, implying their work isn't needed.
 
- \begin{figure}[h!]
+ \begin{figure}[H]
   \centering
   \includegraphics[scale=1]{../threadscope/combinegrouped/sparks}
   \caption{ThreadScope spark output for running the \texttt{snowflake} program with 500 snowflakes.}
