@@ -421,6 +421,9 @@ The work we have done for this report has been somewhat superficial constrained 
   broad parallel solutions. Perhaps take a look at the Repa package.
 \item Try to flatten the calls into the inner rasterization pipeline. This could perhaps enable more course grained parallelism which could be more readily exploited.
   This may require changes to the public API, but may be worth it.
+\item While not fully related, we stumbled on to a discussion\footnote{\url{https://www.reddit.com/r/haskell/comments/747zx1/parallel_computation_in_st/}}
+  about parallel in-place sorting in Haskell using the ST monad.
+  It would be interesting to try to implement a parallel sorting library and see if it is worth it.
 \end{itemize}
 %Streamlining data structures: especially in rasterize, there is a lot of conversion between data structures, as well as reliance on laziness, which is sort of terrible for the strictly evaluated parallelism.
 %Perhaps bigger refactoring needed for maximum parallel gains, e.g. flattening the nested parallelism.
