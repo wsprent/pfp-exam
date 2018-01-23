@@ -475,6 +475,71 @@ We do not know if the common use case for Rasterific is likely to be much more c
 
 \subsection{Multiple FillOrder Calls}
 
+At the top-level, the user uses the library by writing a number of high-level drawing commands. Each of these are interpreted into \texttt{DrawOrders}, which place the texture/colour/environment changing commands into a State monad, with each \texttt{DrawOrder} being an actual command to draw some shape. I.e. we are at the granularity of e.g. a circle or a rectangle, each made up of \texttt{Primitives}.
+
+The \texttt{DrawOrders} are clipped and rasterised, then coloured/textured. This is all implemented monadically within a \texttt{DrawContext}, which is essentially a State monad for describing the changes to the image.
+
+\begin{lstlisting}[caption={Clipping, rasterising, and texturing the \texttt{DrawOrder}.}]
+fillWithTexture :: (PrimMonad m, RenderablePixel px)
+                => FillMethod
+                -> Texture px  -- ^ Color/Texture used for the filling
+                -> [Primitive] -- ^ Primitives to fill
+                -> DrawContext m px ()
+fillWithTexture fillMethod texture els = do
+    img@(MutableImage width height _) <- get
+    let !mini = V2 0 0
+        !maxi = V2 (fromIntegral width) (fromIntegral height)
+        !filler = primToPrim . transformTextureToFiller
+                  meshToImage texture img
+        clipped = foldMap (clip mini maxi) els
+        spans = rasterize fillMethod clipped
+    lift . mapExec filler $ filter (isCoverageDrawable img) spans
+\end{lstlisting}
+
+We note that the calls to \texttt{clip} and \texttt{rasterize} are not directly dependent on the \texttt{DrawContext} aside from extracting the width and the height of the image. We can therefore refactor this function\footnote{Note that there are other similar functions \texttt{fillWithTextureNoAA} and \texttt{fillWithTextureAndMask} which we ignore since they are not used by the benchmarks and are largely the same.} into two parts: one that clips and rasterises, and one that applies texture. The first part can then be mapped in parallel over the \texttt{DrawOrders} (see Listing \ref{lst:fillorder}).
+
+Figure \ref{fig:lines-fillorder} shows the ThreadScope output of running the \texttt{lines} benchmark once with 5000 lines. We use the \texttt{lines} program, because lines are some of the smallest possible \texttt{DrawOrders} (consisting of one \texttt{Primitive}) yet there are many of them to be computed in parallel.
+
+Interestingly enough, the runtime of this program is still dominated by what comes after calling the extracted \texttt{fillOrder}, namely applying textures and drawing the image. We also see what appears to be GHC's generational garbage collection in action. Every time a generation is collected, it is allowed to increase in size by a factor $n$ until next time, the default being $n=2$, as can be seen in the graph. The forceful evaluation of 5000 lines being converted to \texttt{[CoverageSpan]s} is likely what is causing the need for cleaning up unused memory.
+% https://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/GC
+
+ \begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../threadscope/fillorder/lines}
+  \caption{ThreadScope output for running the \texttt{lines} program with 5000 lines.}
+  \label{fig:lines-fillorder}
+\end{figure}
+
+Figure \ref{fig:lines-fillorder-zoom} shows the same ThreadScope output, zoomed in to show some detail.
+The utilisation is very irregular with each spike representing a \texttt{DrawOrder} for one line. This would seem like good utilisation if not for the garbage collection stall that follows after each line.
+
+ \begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{../threadscope/fillorder/lines-zoom}
+  \caption{Zoomed ThreadScope output for running the \texttt{lines} program with 5000 lines.}
+  \label{fig:lines-fillorder-zoom}
+\end{figure}
+
+Figure \ref{fig:lines-fillorder-spark} shows the spark output for the same run. We note the number of converted sparks corresponds to the number of lines in the program, indicating that they were all served by sparks. A large number of sparks are garbage-collected or fizzled, however.
+
+ \begin{figure}[H]
+  \centering
+  \includegraphics[scale=1]{../threadscope/fillorder/lines-spark}
+  \caption{ThreadScope spark output for running the \texttt{lines} program with 5000 lines.}
+  \label{fig:lines-fillorder-spark}
+\end{figure}
+
+Figure \ref{fig:lines-fillorder-sizes} shows the spark sizes, which seem to be comparatively big. The variation is likely due to the difference in sizes of the lines.
+
+ \begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.7]{../threadscope/fillorder/lines-spark-sizes}
+  \caption{ThreadScope spark sizes output for running the \texttt{lines} program with 5000 lines.}
+  \label{fig:lines-fillorder-sizes}
+\end{figure}
+
+It seems for a program with many \texttt{DrawOrders}, there is a good deal of performance to be gained by parallelising at the \texttt{fillOrder} level, but it comes at a cost -- the forced evaluation of thousands of values puts a strain on the runtime memory and triggers more frequent, and time-consuming, garbage collection. It should be possible to mitigate this by limiting the amount of parallelisation.
+
 \section{Discussion}\label{discussion}
 
 Discussion of results: why are the results (good/)bad in our specific implementations? (Overhead from parallel execution, garbage collection, especially in the non-parallel parts of the code.)
@@ -641,4 +706,57 @@ sortEdgeSamples1 cmp samples = runST $ do
     VS.sortBy cmp mutableVector
     V.unsafeFreeze mutableVector
 \end{lstlisting}
+
+\begin{lstlisting}[label={lst:fillorder}, caption={Parallel fillOrder}]
+-- in Rasterific.hs
+renderDrawingAtDpi
+    :: forall px . (RenderablePixel px)
+    => Int -- ^ Rendering width
+    -> Int -- ^ Rendering height
+    -> Dpi -- ^ Current DPI used for text rendering.
+    -> px  -- ^ Background color
+    -> Drawing px () -- ^ Rendering action
+    -> Image px
+renderDrawingAtDpi width height dpi background drawing =
+    let m = drawOrdersOfDrawing width height dpi background drawing
+        k = runPar $ parMap (fillOrder1 width height) m
+    in runST $ runDrawContext width height background $ mapM_ fillOrder2 $ zip m k
+
+----
+
+fillOrder1 :: (Integral x, RenderablePixel px)
+           => x -> x -> DrawOrder px -> [[CoverageSpan]]
+fillOrder1 width height o@DrawOrder { _orderMask = Nothing } =
+  runPar $ parMap (fillWithTexture1 (_orderFillMethod o) width height) (_orderPrimitives o)
+fillOrder1 _ _ _ = error "not implemented"
+
+fillOrder2 :: (PrimMonad m, RenderablePixel px)
+           => (DrawOrder px, [[CoverageSpan]]) -> DrawContext m px ()
+fillOrder2 (o, spans) = do
+  F.forM_ spans $ fillWithTexture2 (_orderTexture o)
+  img <- get
+  lift $ primToPrim $ flip evalStateT img $ _orderDirect o
+
+----
+
+fillWithTexture1 :: Integral x
+                 => FillMethod
+                 -> x -> x
+                 -> [Primitive] -- ^ Primitives to fill
+                 -> [CoverageSpan]
+fillWithTexture1 fillMethod width height els =
+    let !mini = V2 0 0
+        !maxi = V2 (fromIntegral width) (fromIntegral height)
+        clipped = foldMap (clip mini maxi) els
+        spans = rasterize fillMethod clipped
+    in spans
+
+fillWithTexture2 :: (PrimMonad m, RenderablePixel px)
+                 => Texture px -> [CoverageSpan] -> DrawContext m px ()
+fillWithTexture2 texture spans = do
+    img <- get
+    let !filler = primToPrim . transformTextureToFiller meshToImage texture img in
+      lift . mapExec filler $ filter (isCoverageDrawable img) spans
+\end{lstlisting}
+
 \end{document}
