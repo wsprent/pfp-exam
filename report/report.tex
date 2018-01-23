@@ -397,7 +397,73 @@ a completely unbalanced comparison tree. This implies a performance bug (either 
 Either way, while we weren't able to generate a method able to sort the \texttt{EdgeSample}s faster
 than the sequential intro-sort, we have at least show that there is some potential for it. This
  could reached by parallising the \texttt{vector-algorithms} package.
+ 
 \subsection{Combining Edge Samples}
+
+After the \texttt{EdgeSamples} have been sorted, they are converted to \texttt{CoverageSpans} in the function \texttt{combineEdgeSamples}. The sorting ensures that the algorithm runs over the \texttt{EdgeSamples} in row-major order while accumulating state used to compute the emitted \texttt{CoverageSpans}. The conversion is not one-to-one though, but rather serves as a kind of compression, where, depending on the \texttt{EdgeSamples}' coordinates, either zero, one, or two \texttt{CoverageSpans} are emitted. The algorithm's logic means defining a binary operator for a parallel scan or reduce is out of the question\footnote{It is potentially possible to make an associative operator, but there is no right-neutral element.}.
+
+\begin{lstlisting}[caption={Combining the edge samples.}]
+combineEdgeSamples :: (Float -> Float) -> V.Vector EdgeSample
+                   -> [CoverageSpan]
+{-# INLINE combineEdgeSamples #-}
+combineEdgeSamples prepareCoverage vec = go 0 0 0 0 0
+  where
+    !maxi = V.length vec
+    go !ix !x !y !a !_h | ix >= maxi =
+      [CoverageSpan x y (prepareCoverage a) 1]
+    go !ix !x !y !a !h = sub (vec `V.unsafeIndex` ix) where
+      sub (EdgeSample x' y' a' h')
+        | y == y' && x == x' =
+            go (ix + 1) x' y' (a + a') (h + h')
+        | y == y' =
+            p1 : p2 : go (ix + 1) x' y' (h + a') (h + h')
+        | otherwise =
+            p1 : go (ix + 1) x' y' a' h'
+            where p1 = CoverageSpan x y (prepareCoverage a) 1
+                  p2 = CoverageSpan (x + 1) y
+                       (prepareCoverage h) (x' - x - 1)
+\end{lstlisting}
+
+Upon further inspection, we note that if two adjacent \texttt{EdgeSamples} are not on the same row (i.e. do not share a $y$-coordinate), the state is discarded. In other words, the \texttt{CoverageSpans} for each row can be computed independently.
+
+To compute the rows in parallel, we need to split them up. We experimented with two different ways of achieving this: changing the data structure from a \texttt{Vector}, or computing the indices to each row in the \texttt{Vector}. A third option, which was not attempted,  would be to rewrite the sorting logic to also extract the indices at no extra cost.
+
+\subsubsection{Grouping by List or Map}
+
+In this experiment (see Listing \ref{lst:combinegroup}), we convert the sorted \texttt{Vector} to a list or a map of \texttt{[EdgeSample]s}, where each element is a sorted list of the \texttt{EdgeSamples} belonging to one row. The additional cost of converting back from the \texttt{Vector} again is dwarfed by the cost incurred by sorting the list or map directly. We then use a parallel map over each row and finally concatenate the output into one \texttt{[CoverageSpan]}.
+
+Figure \ref{fig:combinegrouped} shows the utilisation in one run of the \texttt{snowflake} benchmark with 500 snowflakes. The parallelisation benefit is minimal -- a blip on HEC 1 corresponds to the parallel part of rendering one of the snowflakes.
+
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[width=\linewidth]{../threadscope/combinegrouped/bigflake}
+  \caption{ThreadScope output for running the \texttt{snowflake} program with 500 snowflakes.}
+  \label{fig:combinegrouped}
+\end{figure}
+
+ThreadScope spark information is shown in Figure \ref{fig:combinegrouped-sparks}. About half of the sparks are garbage-collected, implying their work isn't needed.
+
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[scale=1]{../threadscope/combinegrouped/sparks}
+  \caption{ThreadScope spark output for running the \texttt{snowflake} program with 500 snowflakes.}
+  \label{fig:combinegrouped-sparks}
+\end{figure}
+
+Additionally, the sparks are very small, most non-existent in the spark size output. This would indicate that the parallelised workload is too light, e.g. because the \texttt{EdgeSample} rows are not particularly long, or the work is simply not time-consuming enough.
+
+\subsubsection{Grouping by Index}
+
+In this experiment (see Listing \ref{lst:combineindex}), we keep the \texttt{Vector} representation, but make an additional pass over it in which we collect the start and end indices of each row. Similarly to the other approach, we then do a parallel map and a concatenation at the end. This approach shows largely similar performance results to the former, despite not having the overhead of converting between several data structures.
+
+The answer can perhaps be seen in Figure \ref{fig:combineindex-sparks}, which shows the spark output for running the \texttt{snowflake} program. Almost all of the sparks are garbage-collected, yielding no parallelisation benefit.
+
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[scale=1]{../threadscope/combineindex/sparks}
+  \caption{ThreadScope spark output for running the \texttt{snowflake} program with 500 snowflakes.}
+  \label{fig:combineindex-sparks}
+\end{figure}
 
 \subsection{Multiple Decomposition Calls}
 
@@ -429,7 +495,6 @@ The work we have done for this report has been somewhat superficial constrained 
 %Perhaps bigger refactoring needed for maximum parallel gains, e.g. flattening the nested parallelism.
 
 \section{Conclusion}
-=======
 \clearpage
 \appendix
 
@@ -494,5 +559,80 @@ main = do
   let l = Line (V2 0 0) (V2 1000000 1000000)
       x = (decomposeLine l) []
   putStrLn $ deepseq x "done"
+\end{lstlisting}
+
+\begin{lstlisting}[label={lst:combinegroup}, caption={combineEdgeSamples with grouping}]
+sortAndCombineEdgeSamples2 :: (Float -> Float) -> [EdgeSample] -> [CoverageSpan]
+sortAndCombineEdgeSamples2 f = combineEdgeSamples2 f . sortEdgeSamplesList2
+
+combineEdgeSamples2 :: forall (t :: * -> *) . Traversable t
+                   => (Float -> Float) -> t [EdgeSample] -> [CoverageSpan]
+{-# INLINE combineEdgeSamples2 #-}
+combineEdgeSamples2 prepareCoverage =
+  concat . runPar . parMap gogo
+  where
+    gogo (EdgeSample a b c d:as) = go a b c d as
+    -- all edge samples in a sublist have the same y coordinate
+    go !x !y !a !_h [] = [CoverageSpan x y (prepareCoverage a) 1]
+    go !x !y !a !h (EdgeSample x' y' a' h' : vs)
+      | x == x' = go x' y' (a+a') (h+h') vs
+      | otherwise = p1 : p2 : go x' y' (h+a') (h+h') vs
+      where
+        p1 = CoverageSpan x y (prepareCoverage a) 1
+        p2 = CoverageSpan (x+1) y (prepareCoverage h) (x'-x-1)
+
+-- map-based grouping
+sortEdgeSamplesMap2 :: [EdgeSample] -> Map Float [EdgeSample]
+sortEdgeSamplesMap2 samples =
+  fromAscListWith (++) [(_sampleY a, [a]) | a <- sorted]
+  where sorted = V.toList $ sortEdgeSamples1 xyCompareR samples
+
+-- list-based grouping
+sortEdgeSamplesList2 :: [EdgeSample] -> [[EdgeSample]]
+sortEdgeSamplesList2 samples =
+  groupBy (\a b -> _sampleY a == _sampleY b) sorted
+  where sorted = V.toList $ sortEdgeSamples1 xyCompare samples
+\end{lstlisting}
+
+
+\begin{lstlisting}[label={lst:combineindex}, caption={combineEdgeSamples with indexing}]
+sortAndCombineEdgeSamples1 :: (Float -> Float) -> [EdgeSample] -> [CoverageSpan]
+sortAndCombineEdgeSamples1 f =
+  combineEdgeSamples1 f . sortEdgeSamples1 xyCompare
+
+combineEdgeSamples1 :: (Float -> Float) -> V.Vector EdgeSample -> [CoverageSpan]
+{-# INLINE combineEdgeSamples1 #-}
+combineEdgeSamples1 prepareCoverage samples =
+  concat $ runPar $ parMap (go 0 0 0 0) yind
+  where
+    !maxi = V.length samples
+    !hd = samples `V.unsafeIndex` 0
+    -- (start, end) index pairs of each y-segment
+    (_,_,yind) =
+      V.ifoldl'
+      (\(y,o,acc) i e ->
+        let y' = _sampleY e in
+        if i/=maxi-1 && y'==y then (y,o,acc)
+        else if y'/=y then (y',i,(o,i):acc)
+        else (y',i,(o,maxi):acc) --last element
+      )
+      (_sampleY hd,0,[])
+      samples
+    go !x !y !a !_h (!s, !e) | s == e = [CoverageSpan x y (prepareCoverage a) 1]
+    go !x !y !a !h (!ix, !e) = sub (samples `V.unsafeIndex` ix) where
+      sub (EdgeSample x' y' a' h')
+        | x == x' = go x' y' (a + a') (h + h') (ix+1,e)
+        | otherwise = p1 : p2 : go x' y' (h + a') (h + h') (ix+1,e)
+             where p1 = CoverageSpan x y (prepareCoverage a) 1
+                   p2 = CoverageSpan (x + 1) y (prepareCoverage h) (x' - x - 1)
+
+sortEdgeSamples1 :: (EdgeSample -> EdgeSample -> Ordering)
+                    -> [EdgeSample] -> V.Vector EdgeSample
+sortEdgeSamples1 cmp samples = runST $ do
+    -- Resist the urge to make this a storable vector,
+    -- it is actually a pessimisation.
+    mutableVector <- V.unsafeThaw $ V.fromList samples
+    VS.sortBy cmp mutableVector
+    V.unsafeFreeze mutableVector
 \end{lstlisting}
 \end{document}
