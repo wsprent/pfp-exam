@@ -223,14 +223,14 @@ We will make references to some benchmarks further down. This is a short recap o
 \item \textbf{Lines:} Draws a large number of randomly colored lines on a background. See Figure \ref{fig:lines-benchmark}.
   We have added this to benchmark line primitive decomposition.
 \end{itemize}
-\begin{figure}[h!]
+\begin{figure}[H]
   \centering
   \includegraphics[width=.2\linewidth]{../bigsquare}
   \caption{The output of the \texttt{bigsquare} benchmark.}
   \label{fig:bigsquare-benchmark}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[H]
   \centering
   \includegraphics[width=.4\linewidth]{../lines}
   \caption{The output of the \texttt{lines} benchmark.}
@@ -456,7 +456,7 @@ Figure \ref{fig:combinegrouped} shows the utilisation in one run of the \texttt{
   \label{fig:combinegrouped}
 \end{figure}
 
-ThreadScope spark information is shown in Figure \ref{fig:combinegrouped-sparks}. About half of the sparks are garbage-collected, implying their work isn't needed.
+ThreadScope spark information is shown in Figure \ref{fig:combinegrouped-sparks}. The sparks are also very small, most of them non-existent in the spark size output.
 
  \begin{figure}[H]
   \centering
@@ -464,8 +464,6 @@ ThreadScope spark information is shown in Figure \ref{fig:combinegrouped-sparks}
   \caption{ThreadScope spark output for running the \texttt{snowflake} program with 500 snowflakes.}
   \label{fig:combinegrouped-sparks}
 \end{figure}
-
-Additionally, the sparks are very small, most non-existent in the spark size output. This would indicate that the parallelised workload is too light, e.g. because the \texttt{EdgeSample} rows are not particularly long, or the work is simply not time-consuming enough.
 
 \subsubsection{Grouping by Index}\label{sec:combine-vindex}
 
@@ -525,8 +523,7 @@ Interestingly enough, the runtime of this program is still dominated by what com
   \label{fig:lines-fillorder}
 \end{figure}
 
-Figure \ref{fig:lines-fillorder-zoom} shows the same ThreadScope output, zoomed in to show some detail.
-The utilisation is very irregular with each spike representing a \texttt{DrawOrder} for one line. This would seem like good utilisation if not for the garbage collection stall that follows after each line.
+Figure \ref{fig:lines-fillorder-zoom} shows the same ThreadScope output, zoomed in to show some detail. The utilisation is very irregular with each spike representing a \texttt{DrawOrder} for one line.
 
  \begin{figure}[H]
   \centering
@@ -535,7 +532,7 @@ The utilisation is very irregular with each spike representing a \texttt{DrawOrd
   \label{fig:lines-fillorder-zoom}
 \end{figure}
 
-Figure \ref{fig:lines-fillorder-spark} shows the spark output for the same run. We note the number of converted sparks corresponds to the number of lines in the program, indicating that they were all served by sparks. A large number of sparks are garbage-collected or fizzled, however.
+Figure \ref{fig:lines-fillorder-spark} shows the spark output for the same run. We note the number of converted sparks corresponds to the number of lines in the program, indicating that they were all served by sparks.
 
  \begin{figure}[H]
   \centering
@@ -584,15 +581,37 @@ here with 1000 lines and the snowflake benchmark with 500 flakes, the parallel v
 \end{table}
 
 Revisions for the fillorder\footnote{\url{https://github.com/wsprent/Rasterific/tree/top-level-par}}, sorting\footnote{\url{https://github.com/wsprent/Rasterific/tree/sorting-dump}}, and combine\footnote{\url{https://github.com/wsprent/Rasterific/tree/combineedgesamples-par}} versions can be found in the footnotes.
+\clearpage
+
 \section{Discussion}\label{discussion}
 
-Discussion of results: why are the results (good/)bad in our specific implementations? (Overhead from parallel execution, garbage collection, especially in the non-parallel parts of the code.)
-Are the benchmarks good indicators for performance gained by parallelism (...probably)? Should we have used another parallelization technique (i.e. not Par monad)?
+The results from the previous section show that the current, non-parallel version performs better than any of our parallelisation attempts.\\
+
+A frequent problem seemed to be that a large amount of sparks were garbage-collected or fizzled -- there simply was not enough work to pay off the debts of parallel overhead. Aside from inefficiency caused by flaws in our implementations, it seems that the granularity level of the functions inside the rasteriser is too small to be worth it. \\
+
+Garbage collection was also part of the overhead, but a big part of that is likely due to strict evaluation. Rasterific is implemented using a high degree of laziness, allowing for a more consistent performance and memory usage throughout the lifetime of a program. With our parallelisation attempts, the forced evaluation of values quickly floods the heap, prompting more frequent cleanup. This also calls into question our decision to mainly use \texttt{Control.Monad.Par}, and not e.g. \texttt{Control.Parallel}.\\
+
+We have not discussed the validity of our benchmarks. We do not currently know what the common use case for Rasterific is -- how many \texttt{DrawOrders} will there be, and how many \texttt{Primitives} - and by extension, \texttt{EdgeSamples} - will they each contain? This means something for where parallelisation will be of most benefit. Tracing the numbers in the benchmarks, we found the numbers shown in Figure \ref{fig:bench-numbers}.
+
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{|c|c|c|c|c|}
+  \hline
+  \textbf{Benchmark} & \texttt{DrawOrder} & \texttt{Primitive} & \texttt{EdgeSample} & \texttt{CoverageSpan} \\\hline
+  \texttt{snowflake} & 500 & 148 & 1733 & 1427 \\\hline
+  \texttt{bigsquare} & 1 & 148 & 103626 & 90142 \\\hline
+  \texttt{lines} & 1000 & 1 & 1916 & 1375 \\\hline
+  \end{tabular}
+  \caption{Maximum numbers of elements of each type, being parallelised in the three benchmarks.}
+  \label{fig:bench-numbers}
+\end{figure}
+
+Naturally, the most abundant elements are found at the lowest level of the rasteriser, but the computation needed for them is also comparatively much cheaper than at the higher levels. At the lowest levels, a better parallelisation approach would have been to chunk the work such that each spark would not finish instantly. Alternatively, to only evaluate the code in parallel if there was enough work to do. Given the unpredictable usage of Rasterific, we would probably benefit from the flexibility in dynamically choosing the best strategy.\\
+
+Finally, the structure of Rasterific limits the amount of parallelism that can be achieved in any one level. For example, since the rasteriser is called once per high-level shape, we will only be able to gain performance as long as the cost of one shape is high, cf. Amdahl's law. As we saw in Section \ref{sec:fillorder}, parallelising at a higher granularity yields more apparent results. The scope for parallelism in Rasterific is by and large tree-shaped, and to gain the full benefits of parallelisation, we would need to flatten this tree.
 
 % Perhaps use this link somewher https://www.reddit.com/r/haskell/comments/747zx1/parallel_computation_in_st/
-Broader discussion: what is the actual scope for parallelisation in rasterific? This is kind of an analysis we could have done before starting, but the experimental approach has its own strengths.
 
-Add some evidence for what the scope of parallelising the specific stuff from Section \label{experiments} -- e.g. traced threadscope graphs, debug traces showing actual numbers of draworders, primitives, and edgesamples generated by our benchmarks, etc. All in all, it's very nested.
 
 \section{Further Work}\label{furtherwork}
 The work we have done for this report has been somewhat superficial constrained by the existing flow and data structures in Rasterific.
