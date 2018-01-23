@@ -188,8 +188,16 @@ since Gezira is written in Nile and compiled into C with a heavy runtime which w
  base our work on the comments of Rasterific's author.
 %Måske noget om benchmarks?
 \subsection{Parallel Haskell}
+For this project, we have spent most of our time working with the Par Monad -- besides with sorting where we end up making use of the primitives in \texttt{Control.Parallel}.
+ This is mainly based on ease of use. We could as well have chosen to work with Strategies, and it may
+have been preferable considering the fine granularity of some of our tasks, but we feel more comfortable working with the more simple API from \texttt{Monad.Par}.
+However, to make use of some of the more powerful analysis tools in ThreadScope, we make use of the spark scheduler for the Par Monad
+\footnote{\url{https://hackage.haskell.org/package/monad-par-0.3.4.8/docs/Control-Monad-Par-Scheds-Sparks.html}}.
 
-Focus on Par monad (forced evaluation as opposed to lazy). Haven't needed concurrent primitives because most of the code lends itself well to parallel primitives (with the possible exception of sorting). Also it was easiest to use ...
+The main consequence of this choice is that the tools from the Par Monad package are hyperstrict, so we are forced to force a lot of lazy computations to enable parallelism -- pun not intended.
+
+
+%Focus on Par monad (forced evaluation as opposed to lazy). Haven't needed concurrent primitives because most of the code lends itself well to parallel primitives (with the possible exception of sorting). Also it was easiest to use ...
 
 
 \section{Experiments}\label{experiments}
@@ -246,21 +254,26 @@ The \texttt{Graphics.Rasterific.Line} module has the \texttt{decomposeLine} func
 signature:
 \begin{lstlisting}
 decomposeLine :: Line -> Producer EdgeSample\end{lstlisting}
-We %TODO: finish sentence
-\begin{lstlisting}[caption={Naively splitting work in two parts}]
+The basic work this function does, is decompose a \texttt{Line} primitive into a list of
+\texttt{EdgeSample}. As stated above, it does so by divide-and-conquer.
+
+We implemented a case in the internal helper function which sparks a computation for each half of the list.
+We experimented a bit with how to chunk the parallelism, and ended up with an option which initially splits
+ work and then runs sequentially until depth $n$. This can be seen in Figure \ref{lst:linepar} for $n=10$.
+\begin{lstlisting}[caption={Naively splitting work in two parts every 10 levels of the recursion tree.}, label={lst:linepar}]
     go !ax !ay !bx !by n cont
     | n == 0  = runPar $ do
-        a' <- spawnP $ go ax ay mx my 100 []
-        b' <- spawnP $ go mx my bx by 100 []
+        a' <- spawnP $ go ax ay mx my 10 []
+        b' <- spawnP $ go mx my bx by 10 []
         b <- get b'
         a <- get a'
         return $ a ++ b ++ cont
 \end{lstlisting}
-This approach proves to not generate enough work for each thread even when only a single split
-is performed. Figure \ref{fig:line-thread} shows ThreadScope out put for only splitting the
+This approach proves to not generate enough work for each thread. This is even when only a single split
+is performed ($n$ is set very large). Figure \ref{fig:line-thread} shows ThreadScope out put for only splitting the
 work a single time (per line) on two cores. Even with this course distribution of work
-26731 of 34000 end up being garbage collected, and we only manage to use 25\% of the available
-resources.
+26731 of 34000 sparks end up being garbage collected, and we only manage approximately utilize 25\% of two available
+ cores.
 
 Additionally, running the parallel code with a single core (\texttt{-N1}) gives better performance than with
 two.
@@ -275,7 +288,7 @@ two.
 Inspecting the spark times (Figure \ref{fig:line-thread-sparks}) in ThreadScope confirms that line
 decomposition does not produce work enough to justify the hassle --
 probably not even to offset any cache locality reduction from working 
-on multiple single cores. Most of the converted sparks are completed instantaniously.
+on multiple cores. Most of the converted sparks are completed instantaniously.
 
 \begin{figure}[h!]
   \centering
@@ -284,10 +297,10 @@ on multiple single cores. Most of the converted sparks are completed instantanio
   \label{fig:line-thread-sparks}
 \end{figure}
 
-Investigating further, Figures \ref{fig:single-line-thread} and \ref{fig:single-line-thread-sparks}
-show similar results for decomposing a single, \textit{unrealisically} large line where
- we fork at every 10th recursive call. Again we have
- weak utilisation and small spark workloads.
+To investigate further, we wrote a small program that runs \texttt{decomposeLine} on a single, \textit{unrealisically} large line where
+ we fork at every 10th recursive call. Figures \ref{fig:single-line-thread} and \ref{fig:single-line-thread-sparks} show the results. Again we have
+ weak utilisation and small spark workloads. Given that this is probably the base case for parallisation of decomposing the line primitive there
+  probably isn't must hope for any speedup here.
 
 \begin{figure}[h!]
   \centering
@@ -401,10 +414,16 @@ Broader discussion: what is the actual scope for parallelisation in rasterific? 
 Add some evidence for what the scope of parallelising the specific stuff from Section \label{experiments} -- e.g. traced threadscope graphs, debug traces showing actual numbers of draworders, primitives, and edgesamples generated by our benchmarks, etc. All in all, it's very nested.
 
 \section{Further Work}\label{furtherwork}
-
-Streamlining data structures: especially in rasterize, there is a lot of conversion between data structures, as well as reliance on laziness, which is sort of terrible for the strictly evaluated parallelism.
-
-Perhaps bigger refactoring needed for maximum parallel gains, e.g. flattening the nested parallelism.
+The work we have done for this report has been somewhat superficial constrained by the existing flow and data structures in Rasterific.
+ It would be interesting to see what could be done if these constraints were up for change. Some of the following ideas could be interesting for future work.
+\begin{itemize}
+\item Shift Rasterific from relying on laziness, and try to unify which data strucures are used throughout the library to make it more easy to construct
+  broad parallel solutions. Perhaps take a look at the Repa package.
+\item Try to flatten the calls into the inner rasterization pipeline. This could perhaps enable more course grained parallelism which could be more readily exploited.
+  This may require changes to the public API, but may be worth it.
+\end{itemize}
+%Streamlining data structures: especially in rasterize, there is a lot of conversion between data structures, as well as reliance on laziness, which is sort of terrible for the strictly evaluated parallelism.
+%Perhaps bigger refactoring needed for maximum parallel gains, e.g. flattening the nested parallelism.
 
 \section{Conclusion}
 =======
@@ -456,5 +475,21 @@ main = do
   end <- sortedPar `seq` getCPUTime
   let time = (fromIntegral (end - start)) / (10^12)
   printf "Time: %0.9f sec\n" (time :: Double)
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Decomposing a very long single line.}, label={lst:singleline}]
+import Internal (
+  decomposeLine
+  ,Line
+  )
+import Graphics.Rasterific
+import Control.DeepSeq
+import Debug.Trace
+
+main :: IO ()
+main = do
+  let l = Line (V2 0 0) (V2 1000000 1000000)
+      x = (decomposeLine l) []
+  putStrLn $ deepseq x "done"
 \end{lstlisting}
 \end{document}
