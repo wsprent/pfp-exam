@@ -138,8 +138,12 @@
 
 \section{Introduction}
 % Noget om hvad projektet går ud på, måske hovedresultater
+If a sequential program exhibits certain characteristics, it may be viable to apply parallelization strategies to it in hopes of
+ obtaining improved execution times.
+In this report, we present a handful of parallelization experiments which we have 
+on the Rasterific\footnote{\url{https://github.com/Twinside/Rasterific}} rasterization library.
 
-In this, we present a handful of parallelization experiments. We did not manage to achieve any speedup, but we made have made some observations which may guide
+ We did not manage to achieve any valuable speedup. However, we have made some observations which may guide
  further work in parallising the library.
 \section{Background}\label{background}
 
@@ -153,7 +157,7 @@ What background knowledge we have used for the project + parts we have chosen to
   \label{fig:snowflakes}
 \end{figure}
 
-Rasterific\footnote{\url{https://github.com/Twinside/Rasterific}} is a vector graphics rasterization engine written in Haskell. In short, this means it takes a series
+Rasterific is a vector graphics rasterization engine written in Haskell. In short, this means it takes a series
 of instructions in form of primitive geometry (circles, rectangles etc.) and/or line strokes along with some texturing options and produces a raster image like the
  one in Figure \ref{fig:snowflakes}. It is based
  on a rasterizer called Gezira\footnote{\url{https://github.com/damelang/gezira}} written in the Nile programming language\footnote{\url{https://github.com/damelang/nile}}.
@@ -196,6 +200,13 @@ Some kind of revised graph from the one in Section \ref{background}, with the sp
 
 
 \subsection{Benchmarks}
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.4\linewidth]{../lines}
+  \caption{The output of the \texttt{lines} benchmark.}
+  \label{fig:lines-benchmark}
+\end{figure}
 
 \subsection{Primitives}
 Before rasterization, Rasterific works with three different primitive shapes:
