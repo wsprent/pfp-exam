@@ -576,9 +576,9 @@ The work we have done for this report has been somewhat superficial constrained 
 \item While not fully related, we stumbled on to a discussion\footnote{\url{https://www.reddit.com/r/haskell/comments/747zx1/parallel_computation_in_st/}}
   about parallel in-place sorting in Haskell using the ST monad.
   It would be interesting to try to implement a parallel sorting library and see if it is worth it.
+  
+\item Even for smaller modular attempts at parallelising, our efforts are not exhaustive. There are other places where it could be applied, such as for clipping, which is done just before rasterising. The clipping functions actually return difference lists and so would be much cheaper to concatenate, once computed.
 \end{itemize}
-%Streamlining data structures: especially in rasterize, there is a lot of conversion between data structures, as well as reliance on laziness, which is sort of terrible for the strictly evaluated parallelism.
-%Perhaps bigger refactoring needed for maximum parallel gains, e.g. flattening the nested parallelism.
 
 \section{Conclusion}
 \clearpage
