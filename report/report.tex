@@ -467,6 +467,12 @@ The answer can perhaps be seen in Figure \ref{fig:combineindex-sparks}, which sh
 
 \subsection{Multiple Decomposition Calls}
 
+The rasterizer starts by decomposing each \texttt{Primitive} into \texttt{EdgeSamples}, flattening the results into one big \texttt{[EdgeSample]}, using a lazy continuation-based approach to avoid the overhead of concatenation.
+
+As the decompositions are independent of each other, it should be straightforward to call the decomposition function for each \texttt{Primitive} in parallel, although at the cost of the subsequent concatenation. A brief experiment showed that the number of \texttt{Primitives} for the shapes in our benchmarks was fairly low -- the most complex shape is the snowflake, which consists of 148 curves. As such, there is limited to gain from parallelising these calls in the context of our performance measurements, and we did not attempt to implement this parallelisation.
+
+We do not know if the common use case for Rasterific is likely to be much more complex than the snowflake. This is discussed further in Section \ref{discussion}.
+
 \subsection{Multiple FillOrder Calls}
 
 \section{Discussion}\label{discussion}
