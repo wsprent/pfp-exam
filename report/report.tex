@@ -258,7 +258,9 @@ This approach proves to not generate enough work for each thread even when only 
 is performed. Figure \ref{fig:line-thread} shows ThreadScope out put for only splitting the
 work a single time (per line) on two cores. Even with this course distribution of work
 26731 of 34000 end up being garbage collected, and we only manage to use 25\% of the available
-resources, and running the parallel code with a single thread gives better performance than with
+resources.
+
+Additionally, running the parallel code with a single core (\texttt{-N1}) gives better performance than with
 two.
 \begin{figure}[h!]
   \centering
