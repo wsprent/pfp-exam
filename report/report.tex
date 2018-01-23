@@ -138,16 +138,16 @@
 
 \section{Introduction}
 % Noget om hvad projektet går ud på, måske hovedresultater
-If a sequential program exhibits certain characteristics, it may be viable to apply parallelization strategies to it in hopes of
+If a sequential program exhibits certain characteristics, it may be viable to apply parallelisation strategies to it in hopes of
  obtaining improved execution times.
-In this report, we present a handful of parallelization experiments which we have 
-on the Rasterific\footnote{\url{https://github.com/Twinside/Rasterific}} rasterization library.
+In this report, we present a handful of parallelisation experiments which we have 
+on the Rasterific\footnote{\url{https://github.com/Twinside/Rasterific}} rasterisation library.
 
  We did not manage to achieve any valuable speedup. However, we have made some observations which may guide
- further work in parallising the library.
+ further work in parallelising the library.
 \section{Background}\label{background}
 
-What background knowledge we have used for the project + parts we have chosen to focus on (so not exactly a theory section).
+This section describes the structure of the Rasterific library and the tools we will use for parallelisation.
 
 \subsection{Rasterific}
 \begin{figure}[h!]
@@ -165,7 +165,7 @@ of instructions in form of primitive geometry (circles, rectangles etc.) and/or 
 
 \begin{figure}[h!]
   \centering
-  \includegraphics[width=.4\linewidth]{../rasterific-pipeline}
+  \includegraphics[width=.6\linewidth]{../rasterific-pipeline}
   \caption{Approximation of the Rasterific pipeline.}
   \label{fig:rasterific-pipeline}
 \end{figure}
@@ -202,22 +202,30 @@ The main consequence of this choice is that the tools from the Par Monad package
 
 \section{Experiments}\label{experiments}
 
-Approach to find possibilities for parallelization: reading the salient parts of the source code and identifying them manually. We have also followed the pointers from the Rasterific author in \url{https://github.com/Twinside/Rasterific/issues/32#issuecomment-338327066}
+This section describes our experiments in parallelising Rasterific, as well as our results. Our approach is fairly modular -- we have identified a number of places that could be parallelised, implemented our changes, and evaluated the performance isolated from the other instances.
 
-Some kind of revised graph from the one in Section \ref{background}, with the specific functions we have worked on annotated + clearly describing which granularity they operate at. v importante
+We have made parallelisation attempts on a number of different granularities, parallelising across \texttt{EdgeSamples} (fine) to \texttt{DrawOrders} (coarse). See Figure \ref{fig:rasterific-pipeline-flot} for an approximation of the granularity, the numbers denoting the section in which the experiment is described.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=.6\linewidth]{../rasterific-pipeline-flot}
+  \caption{Parallelisation granularity in the Rasterific pipeline.}
+  \label{fig:rasterific-pipeline-flot}
+\end{figure}
+
 
 \subsection{Benchmarks}
 We will make references to some benchmarks further down. This is a short recap of which benchmarks exist in Rasterific and which ones we have added.
 \begin{itemize}
 \item \textbf{Snowflake:} Draws a series of transparent snowflakes on a background. See Figure \ref{fig:snowflakes}. Was added to the Rasterific project
    shortly before we started our project.
-\item \textbf{BigSquare:} Draws a big pink snowflake (named for legacy reasons). The purpose of this benchmark is to only have one call to the rasteriser containing many \texttt{Primitives}. See Figure \ref{fig:bigsquare-benchmark}.
+\item \textbf{BigSquare:} Draws a big pink snowflake (named for legacy reasons). We have added this to benchmark a single call to the rasteriser containing many \texttt{Primitives}. See Figure \ref{fig:bigsquare-benchmark}.
 \item \textbf{Lines:} Draws a large number of randomly colored lines on a background. See Figure \ref{fig:lines-benchmark}.
   We have added this to benchmark line primitive decomposition.
 \end{itemize}
 \begin{figure}[h!]
   \centering
-  \includegraphics[width=.4\linewidth]{../bigsquare}
+  \includegraphics[width=.2\linewidth]{../bigsquare}
   \caption{The output of the \texttt{bigsquare} benchmark.}
   \label{fig:bigsquare-benchmark}
 \end{figure}
