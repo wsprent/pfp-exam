@@ -139,6 +139,8 @@
 \section{Introduction}
 % Noget om hvad projektet går ud på, måske hovedresultater
 
+In this, we present a handful of parallelization experiments. We did not manage to achieve any speedup, but we made have made some observations which may guide
+ further work in parallising the library.
 \section{Background}\label{background}
 
 What background knowledge we have used for the project + parts we have chosen to focus on (so not exactly a theory section).
@@ -177,6 +179,9 @@ primitives, this includes the following:
 \item the combination of \texttt{EdgeSample}s into \texttt{CoverageSpan}s, a somewhat more complicated and course grained task with the highest potential for speedup at face value.
 \end{enumerate}
 
+It's worth noting that the Gezira library is parallel to some degree. It may be fruitful to base any parallelization efforts in Rasterific on how it is achieved in Gezira. However,
+since Gezira is written in Nile and compiled into C with a heavy runtime which we would need to understand to understand when the rasterizer is multithreaded, we chosen to instead
+ base our work on the comments of Rasterific's author.
 %Måske noget om benchmarks?
 \subsection{Parallel Haskell}
 
