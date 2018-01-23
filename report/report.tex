@@ -198,9 +198,13 @@ Approach to find possibilities for parallelization: reading the salient parts of
 
 Some kind of revised graph from the one in Section \ref{background}, with the specific functions we have worked on annotated + clearly describing which granularity they operate at. v importante
 
-
 \subsection{Benchmarks}
 
+\begin{itemize}
+\item \textbf{Snowflake:} Draws a series of transparent snowflakes on a background. See Figure \ref{fig:snowflakes}.
+\item ??
+\item \textbf{Lines:} Draws a large number of randomly colored lines on a background. See Figure \ref{fig:lines}
+\end{itemize}
 \begin{figure}[h!]
   \centering
   \includegraphics[width=.4\linewidth]{../lines}
@@ -230,10 +234,10 @@ This pattern seems ripe for parallelisation, however there are a couple of short
  \item The decomposition functions returns the following lazy data structure:
    \begin{lstlisting}
      type Producer a = [a] -> [a]\end{lstlisting}
-   presumably save the cost of generating a long list of lists just to concatenate them in the end
+   presumably to save the cost of generating a long list of lists just to concatenate them in the end
     when the \texttt{EdgeSamples} are sorted.
   \end{itemize}
-  Nevertheless, we have experimented with parallelising the decomposition of primitives.
+  Nevertheless, we have experimented with parallelizing the decomposition of primitives.
 
 \subsubsection{Lines}
 The \texttt{Graphics.Rasterific.Line} module has the \texttt{decomposeLine} function with type
