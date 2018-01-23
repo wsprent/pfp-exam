@@ -144,9 +144,40 @@
 What background knowledge we have used for the project + parts we have chosen to focus on (so not exactly a theory section).
 
 \subsection{Rasterific}
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.4\linewidth]{../flakes}
+  \caption{The result of the ``snowflake'' benchmark.}
+  \label{fig:snowflakes}
+\end{figure}
 
-What is rasterific, overall pipeline, levels of granularity, main data types. Needs some kind of drawing or graph, to be referenced later in Section \ref{experiments}.
+Rasterific\footnote{\url{https://github.com/Twinside/Rasterific}} is a vector graphics rasterization engine written in Haskell. In short, this means it takes a series
+of instructions in form of primitive geometry (circles, rectangles etc.) and/or line strokes along with some texturing options and produces a raster image like the
+ one in Figure \ref{fig:snowflakes}. It is based
+ on a rasterizer called Gezira\footnote{\url{https://github.com/damelang/gezira}} written in the Nile programming language\footnote{\url{https://github.com/damelang/nile}}.
+%What is rasterific, overall pipeline, levels of granularity, main data types. Needs some kind of drawing or graph, to be referenced later in Section \ref{experiments}.
 
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.4\linewidth]{../rasterific-pipeline}
+  \caption{Approximation of the Rasterific pipeline.}
+  \label{fig:rasterific-pipeline}
+\end{figure}
+
+Figure \ref{fig:rasterific-pipeline} shows our basic understanding of the general pipeline in Rasterific. The user of the library defines a bunch of vector shapes by calling the
+API which are represented internally as a series of commands in a free monad. When this is interpreted, a list of \texttt{DrawOrder} objects are generated which contain lists
+of primitives (Bezier curves - linear, quadratic, and cubic) which are the pumped through a rasterization pipeline (the left wing in Figure \ref{fig:rasterific-pipeline}). The rasterization
+pipeline decomposes the primitives into raster lines, sorts them, and finally combines them. Finally, a filling strategy and some texture is applied and we have an image.
+
+Based on a discussion in Rasterifics Issue Tracker\footnote{\url{https://github.com/Twinside/Rasterific/issues/32}}, we have focused mainly on the full rasterization pipeline of
+primitives, that is we have looked at parallizing,
+\begin{enumerate}
+\item the decomposition of primitives into \texttt{EdgeSample}s, a very fine-grained task with potential for constant span;
+\item the sorting of \texttt{EdgeSample}s, a known problem with somewhat limited potential for parallism; and,
+\item the combination of \texttt{EdgeSample}s into \texttt{CoverageSpan}s, a somewhat more complicated and course grained task with the highest potential for speedup at face value.
+\end{enumerate}
+
+%Måske noget om benchmarks?
 \subsection{Parallel Haskell}
 
 Focus on Par monad (forced evaluation as opposed to lazy). Haven't needed concurrent primitives because most of the code lends itself well to parallel primitives (with the possible exception of sorting). Also it was easiest to use ...
@@ -267,16 +298,16 @@ sortEdgeSamples samples = runST $ do
 
 Since sparking imperative code is not something you can do by default, and we want spark stats for
 analysis, we can make use of a little hack (see Listing \ref{lst:parst}) which creates a sparkable
- thunk out of an ST computation found on a post\footnote{\label{note1}\url{https://unlines.wordpress.com/2010/04/21/sparking-imperatives/}}.
+ thunk out of an ST computation found in an online discussion\footnote{\label{note1}\url{https://unlines.wordpress.com/2010/04/21/sparking-imperatives/}}\footnote{}.
 \begin{lstlisting}[label={lst:parst}, caption={\texttt{parST}}]
 parST :: ST s a -> ST s a
 parST m = x `par` return x
   where
     x = runST (unsafeIOToST noDuplicate >> unsafeCoerce m)
 \end{lstlisting}
-Obviously, competeting with optimized sequential code from the \texttt{vector-algorithms} package is a
+Obviously, competing with optimized sequential code from the \texttt{vector-algorithms} package is a
  bit is a long shot, but for the sake of experiment we wrote a sorting function (based on an example from where we got the \texttt{parST} function),
- it is a parallel, in-place quicksort (Listing \ref{lst:parsort}) with a depth and size threshold for deciding when to bail out to the intro sort.
+ it is a parallel, in-place quicksort (Listing \ref{lst:parsort}) with a depth and size threshold for deciding when to bail out to the aforementioned intro sort.
 
  Figure \ref{fig:sorting-thread} shows ThreadScope output for a isolated test of the sorting function.
  It shows some good pretty alright utilisation of the two cores.
