@@ -555,6 +555,47 @@ Figure \ref{fig:lines-fillorder-sizes} shows the spark sizes, which seem to be c
 
 It seems for a program with many \texttt{DrawOrders}, there is a good deal of performance to be gained by parallelising at the \texttt{fillOrder} level, but it comes at a cost -- the forced evaluation of thousands of values puts a strain on the runtime memory and triggers more frequent, and time-consuming, garbage collection. It should be possible to mitigate this by limiting the amount of parallelisation.
 
+
+\subsection{Results}
+
+lines 1000, snowflakes 500, bigsquare
+run with -lfs -N2
+
+master (seq)
+\begin{verbatim}
+lines: 572.6 ms, std dev = 4.488 ms, 
+snowflake: 740.4 ms, 2.149 ms
+bigsquare: 179.3 ms, 1.117 ms
+\end{verbatim}
+
+fillorder 3.6
+\begin{verbatim}
+lines: 575.4 ms, 2.656 ms
+snowflake: 769.8 ms, 2.255 ms
+bigsquare: 183.3 ms, 1.453 ms
+\end{verbatim}
+
+sorting 3.3
+\begin{verbatim}
+lines: 970.8 ms, 6.526 ms
+snowflake: 1.061 s, 34.46 ms
+bigsquare: 205.2 ms, 3.414 ms
+\end{verbatim}
+
+combine (grouped list) 3.a
+\begin{verbatim}
+lines: 777.9 ms, 377.4 mikros
+snowflake: 862.1 ms, 4.795 ms
+bigsquare: 214.2 ms, 4.614 ms
+\end{verbatim}
+
+combine (vector index) 3.b
+\begin{verbatim}
+lines: 769.8 ms, 1.482 ms
+snowflake: 877.3 ms, 2.500 ms
+bigsquare: 198.5 ms, 1.644 ms
+\end{verbatim}
+
 \section{Discussion}\label{discussion}
 
 Discussion of results: why are the results (good/)bad in our specific implementations? (Overhead from parallel execution, garbage collection, especially in the non-parallel parts of the code.)
