@@ -14,3 +14,6 @@
 
 *.pdf
 *.eventlog
+*.snm
+*.nav
+*.synctex.gz
