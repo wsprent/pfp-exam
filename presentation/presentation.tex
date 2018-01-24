@@ -24,14 +24,15 @@
 \frame{\titlepage}
 \begin{frame}[c]{Project}
     \begin{itemize}
-    \item Briefly describe
-    \item what this project is about
+    \item Rasterific is a vector drawing library; a rasteriser.
+    \item Can we improve the performance of Rasterific by adding parallelism?
     \end{itemize}
 \begin{figure}
 \centering
 \includegraphics[width=0.3\linewidth]{../flakes}
 \includegraphics[width=0.3\linewidth]{../bigsquare}
 \includegraphics[width=0.3\linewidth]{../lines}
+\caption{Rasterised images created by Rasterific.}
 \end{figure}
 \end{frame}
 
@@ -143,9 +144,9 @@ maybe mention benchmarks
 \item Refactor Rasterific for strictness or flatness
 \end{itemize}
 
-\begin{center}
-Some wrap-up words, TL;DR style
-\end{center}
+\bigskip
+
+TL;DR: There is plenty of scope for parallelism in Rasterific, but we didn't manage to use it.
 
 \end{frame}
 \end{document}
