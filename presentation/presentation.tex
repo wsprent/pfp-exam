@@ -80,8 +80,8 @@ I have an idea for a tree-like picture - TBA
   \end{itemize}
   \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.75\linewidth]{../threadscope/lines/single-line-every-10}
-    \includegraphics[width=0.4\linewidth]{../threadscope/lines/single-line-every-10-spark-times}
+    \includegraphics[width=0.7\linewidth]{../threadscope/lines/single-line-every-10}\\
+    \includegraphics[width=0.7\linewidth]{../threadscope/lines/single-line-every-10-spark-times}
     \caption{ThreadScope output for decomposing a 1M px long line.}
   \label{fig:line-thread-sparks}
 
@@ -90,14 +90,14 @@ I have an idea for a tree-like picture - TBA
 % NOTE: each experiment slide should be fairly brief during presentation -- not too many technical details, rather an explanation of parallel granularity + what we saw in threadscope
 \begin{frame}[c]{Sorting \texttt{EdgeSamples}}
   \begin{itemize}
-  \item Courser grained parallelism.
+  \item Coarser grained parallelism.
   \item Complex implementation.
   \end{itemize}
  \begin{figure}[h!]
   \centering
-  \includegraphics[width=0.6\linewidth,trim={4cm 2cm 0 0},clip]{../threadscope/sorting/sorting-final}
-  \includegraphics[width=0.3\linewidth,trim={8cm 2cm 5cm 0},clip]{../threadscope/sorting/sorting-final-zoom}
-  \includegraphics[width=0.25\linewidth]{../threadscope/sorting/sorting-final-sparks}
+  \includegraphics[width=0.7\linewidth,trim={0cm 2cm 0 0},clip]{../threadscope/sorting/sorting-final}\\
+  \includegraphics[width=0.3\linewidth,trim={4cm 3cm 5cm 0},clip]{../threadscope/sorting/sorting-final-zoom}
+  \includegraphics[width=0.4\linewidth,trim={0 0 0 1cm}]{../threadscope/sorting/sorting-final-sparks}
   \caption{ThreadScope output for sorting 1.000.000 \texttt{EdgeSample}s.}
   \label{fig:sorting-thread}
 \end{figure}
