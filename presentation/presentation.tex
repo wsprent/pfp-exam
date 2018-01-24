@@ -36,25 +36,72 @@
 \end{frame}
 
 \begin{frame}[c]{Rasterific}
-About the implementation + pipeline picture.
+  \begin{itemize}
+  \item An open source vector graphics rasterizer.
+  \item Written in Haskell.
+  \item No parallelism.
+  \end{itemize}
 
-Maybe split in two slides
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.4\linewidth]{../rasterific-pipeline}
+  \caption{Approximation of the Rasterific pipeline.}
+\end{figure}
+
 \end{frame}
 
 \begin{frame}[c]{Experiments}
-overview of experiments - use same pipeline picture, annotated (on the same position in the slide for maximum goodness)
+  \begin{itemize}
+  \item bla
+  \item bla
+  \item bla
+  \end{itemize}
+
+  \begin{figure}[H]
+  \centering
+  \includegraphics[width=.4\linewidth]{../rasterific-pipeline-flot}
+  \caption{Parallelisation granularity in the Rasterific pipeline.}
+  \label{fig:rasterific-pipeline-flot}
+\end{figure}
+\end{frame}
+
+\begin{frame}
+
+  
+    overview of experiments - use same pipeline picture, annotated (on the same position in the slide for maximum goodness)
 
 I have an idea for a tree-like picture - TBA
-\end{frame}
 
+\end{frame}
 \begin{frame}[c]{Decomposition of \texttt{Primitives}}
-description + threadscope.
+  \begin{itemize}
+  \item Fine grained parallelism.
+  \item Simple divide-and-conquer -- straightforward implementaion.
+  \end{itemize}
+  \begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.75\linewidth]{../threadscope/lines/single-line-every-10}
+    \includegraphics[width=0.4\linewidth]{../threadscope/lines/single-line-every-10-spark-times}
+    \caption{ThreadScope output for decomposing a 1M px long line.}
+  \label{fig:line-thread-sparks}
 
-NOTE: each experiment slide should be fairly brief during presentation -- not too many technical details, rather an explanation of parallel granularity + what we saw in threadscope
+\end{figure}
 \end{frame}
-
+% NOTE: each experiment slide should be fairly brief during presentation -- not too many technical details, rather an explanation of parallel granularity + what we saw in threadscope
 \begin{frame}[c]{Sorting \texttt{EdgeSamples}}
-description + threadscope
+  \begin{itemize}
+  \item Courser grained parallelism.
+  \item Complex implementation.
+  \end{itemize}
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.6\linewidth,trim={4cm 2cm 0 0},clip]{../threadscope/sorting/sorting-final}
+  \includegraphics[width=0.3\linewidth,trim={8cm 2cm 5cm 0},clip]{../threadscope/sorting/sorting-final-zoom}
+  \includegraphics[width=0.25\linewidth]{../threadscope/sorting/sorting-final-sparks}
+  \caption{ThreadScope output for sorting 1.000.000 \texttt{EdgeSample}s.}
+  \label{fig:sorting-thread}
+\end{figure}
+
 \end{frame}
 
 \begin{frame}[c]{Combining \texttt{EdgeSamples}}
