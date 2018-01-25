@@ -1,10 +1,4 @@
 \documentclass[slidestop,compress,mathserif, xcolor=table]{beamer}
-\usetheme{Madrid}
-\setbeamertemplate{headline}{}
-\definecolor{scigreen}{RGB}{70,116,60}
-\setbeamercolor{structure}{fg=scigreen}
-\setbeamercovered{highly dynamic}
-
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[utf8]{inputenc}
@@ -13,6 +7,16 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{listings}
+\usepackage{enumitem}
+
+\usetheme{Madrid}
+\setbeamertemplate{headline}{}
+\definecolor{scigreen}{RGB}{70,116,60}
+\setbeamercolor{structure}{fg=scigreen}
+\setbeamercovered{highly dynamic}
+\setitemize{label=\usebeamerfont*{itemize item}
+  \usebeamercolor[fg]{itemize item}
+  \usebeamertemplate{itemize item}}
 
 \title{Improving Rasterific}
 \author[Chi, William]{Chi, William}
@@ -132,11 +136,22 @@ I have an idea for a tree-like picture - TBA
 \end{figure}
 \end{frame}
 
-\begin{frame}[c]{Benchmarks and Results}
-  \begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.6\linewidth,trim={0cm 0.5cm 0 0},clip]{../timings}
-\end{figure}
+\begin{frame}{Benchmarks and Results}
+
+\begin{tabular}{cl}
+  \begin{tabular}{l}
+  \parbox{0.3\linewidth}{
+  \begin{itemize}[leftmargin=0cm]
+   \item bigsquare:\newline 1 \texttt{DrawOrder}\newline 104626 \texttt{EdgeSamples}
+   \item lines:\newline 1000 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
+   \item snowflakes:\newline 500 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
+  \end{itemize}
+  }
+  \end{tabular} &
+  \begin{tabular}{c}
+  \includegraphics[width=0.6\linewidth,trim={0cm 0.5cm 0 0},clip]{../timings}
+  \end{tabular}
+\end{tabular}
 \end{frame}
 
 \begin{frame}[c]{Evaluation}
