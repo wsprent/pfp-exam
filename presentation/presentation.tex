@@ -155,6 +155,9 @@ I have an idea for a tree-like picture - TBA
 \end{frame}
 
 \begin{frame}[c]{Evaluation}
+Original, sequential version beats all our attempts. Why?\\
+\bigskip
+
 Fine-grained parallelism:
 \begin{itemize}
 \item Too little work
@@ -167,11 +170,9 @@ Coarse-grained parallelism:
 \item GC overhead -- strictness causes memory strain
 \item Nested parallelism
 \end{itemize}
-
-maybe mention benchmarks
 \end{frame}
 
-\begin{frame}[c]{Further Work and Conclusion}
+\begin{frame}[c]{Further Work}
 
 \begin{itemize}
 \item Parallel sorting with ST
@@ -179,9 +180,11 @@ maybe mention benchmarks
 \item Parallel concatMap
 \item Use non-strict parallelism
 \item Refactor Rasterific for strictness or flatness
+\item ...
 \end{itemize}
+\end{frame}
 
-\bigskip
+\begin{frame}[c]{Conclusion}
 
 TL;DR: There is plenty of scope for parallelism in Rasterific, but we didn't manage to use it.
 
