@@ -107,32 +107,29 @@ I have an idea for a tree-like picture - TBA
 
 \begin{frame}[c]{Combining \texttt{EdgeSamples}}
   \begin{itemize}
-  \item Perhaps too fine grained.
-  \item Requires farther reaching changing.
+  \item Parallel across rows of EdgeSamples.
+  \item Refactoring introduces expensive conversions.
   \end{itemize}
- \begin{figure}[H]
-  \includegraphics[width=0.7\linewidth]{../threadscope/combinegrouped/bigflake}
-  \includegraphics[width=0.3\linewidth]{../threadscope/combinegrouped/sparks}
-  \caption{ThreadScope output for running the \texttt{snowflake} program with 500 snowflakes.}
-  \label{fig:combinegrouped-sparks}
+ \begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.7\linewidth,trim={0cm 2cm 0 0},clip]{../threadscope/combinegrouped/bigflake}\\
+  \includegraphics[width=0.55\linewidth,trim={0 0 0 0},clip]{../threadscope/combinegrouped/sparks}
+  \caption{ThreadScope output for running the snowflake program with 500 flakes.}
 \end{figure}
-
 \end{frame}
 
 \begin{frame}[c]{Filling \texttt{DrawOrders}}
   \begin{itemize}
-  \item Most course granularity.
-  \item Results in heavy GC.
+  \item Coarsest level of parallelism in this project.
+  \item Strict evaluation forces GC.
   \end{itemize}
- \begin{figure}[H]
+ \begin{figure}[h!]
   \centering
-  \includegraphics[width=0.7\linewidth]{../threadscope/fillorder/lines}\\
-  \includegraphics[width=0.3\linewidth]{../threadscope/fillorder/lines-zoom}
-  \includegraphics[width=0.4\linewidth]{../threadscope/fillorder/lines-spark}
-  \caption{ThreadScope output for running the \texttt{lines} program with 5000 lines.}
-  \label{fig:lines-fillorder-spark}
+  \includegraphics[width=0.7\linewidth,trim={0cm 2cm 0 0},clip]{../threadscope/fillorder/lines}\\
+  \includegraphics[width=0.3\linewidth,height=0.15\textheight,trim={0 0 0 0},clip]{../threadscope/fillorder/lines-spark-sizes}
+    \includegraphics[width=0.4\linewidth,height=0.15\textheight,trim={0 0 0 0},clip]{../threadscope/fillorder/lines-spark}
+  \caption{ThreadScope output for running the lines program with 5000 lines.}
 \end{figure}
-
 \end{frame}
 
 \begin{frame}[c]{Benchmarks and Results}
