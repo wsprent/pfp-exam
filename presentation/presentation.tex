@@ -17,20 +17,21 @@
 \setitemize{label=\usebeamerfont*{itemize item}
   \usebeamercolor[fg]{itemize item}
   \usebeamertemplate{itemize item}}
+\newcommand{\emp}[1]{\textit{\textcolor{scigreen}{#1}}}
 
 \title{Improving Rasterific}
 \author[Chi, William]{Chi, William}
-\institute[DIKU]{Department of Computer Science, University of Copenhagen}
+\institute[DIKU]{Parallel Functional Programming 2017/18\newline Department of Computer Science, University of Copenhagen}
 \date{\today}
 
 \begin{document}
 
 \frame{\titlepage}
 \begin{frame}[c]{Project}
-    \begin{itemize}
-    \item Rasterific is a vector drawing library; a rasteriser.
-    \item Can we improve the performance of Rasterific by adding parallelism?
-    \end{itemize}
+
+Rasterific is a vector drawing library; a rasteriser.\\~\\
+\emp{Can we improve the performance of Rasterific by adding parallelism?}
+
 \begin{figure}
 \centering
 \includegraphics[width=0.3\linewidth]{../flakes}
@@ -62,7 +63,7 @@
 \end{itemize}
 \begin{figure}
 \centering
-\includegraphics[width=0.9\linewidth]{../tree}
+\includegraphics[width=0.8\linewidth]{../tree}
 \caption{Tree structure of Rasterific with our experiments.}
 \end{figure}
 \end{frame}
@@ -130,11 +131,11 @@
 \begin{tabular}{cl}
   \begin{tabular}{l}
   \parbox{0.3\linewidth}{
-  \begin{itemize}[leftmargin=0cm]
-   \item \texttt{bigsquare}:\newline 1 \texttt{DrawOrder}\newline 104626 \texttt{EdgeSamples}
-   \item \texttt{lines}:\newline 1000 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
-   \item \texttt{snowflakes}:\newline 500 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
-  \end{itemize}
+  \emp{\texttt{bigsquare}}:\newline 1 \texttt{DrawOrder}\newline 104626 \texttt{EdgeSamples}\\
+
+  \emp{\texttt{lines}}:\newline 1000 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}\\
+
+  \emp{\texttt{snowflakes}}:\newline 500 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
   }
   \end{tabular} &
   \begin{tabular}{c}
@@ -144,8 +145,9 @@
 \end{frame}
 
 \begin{frame}[c]{Evaluation}
-Original, sequential version beats all our attempts. Why?\\
+\emp{Original, sequential version beats all our attempts. Why?}\\
 \bigskip
+\pause
 
 Fine-grained parallelism:
 \begin{itemize}
@@ -153,6 +155,7 @@ Fine-grained parallelism:
 \item Too much overhead in data structure conversion.
 \end{itemize}
 \bigskip
+\pause
 
 Coarse-grained parallelism:
 \begin{itemize}
@@ -175,7 +178,7 @@ Coarse-grained parallelism:
 
 \begin{frame}[c]{Conclusion}
 
-TL;DR: There is plenty of scope for parallelism in Rasterific, but we didn't manage to use it.
+TL;DR: \emp{There is plenty of scope for parallelism in Rasterific, but we didn't manage to use it.}
 
 \end{frame}
 \end{document}
