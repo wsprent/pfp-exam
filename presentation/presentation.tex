@@ -42,7 +42,7 @@
 
 \begin{frame}[c]{Rasterific}
   \begin{itemize}
-  \item An open source vector graphics rasterizer.
+  \item An open source vector graphics rasteriser.
   \item Written in Haskell.
   \item No parallelism.
   \end{itemize}
@@ -57,20 +57,20 @@
 
 \begin{frame}[c]{Experiments}
 \begin{itemize}
-\item Modular experiments in parallelising at different granularities.
+\item 4 modular experiments in parallelising at different granularities.
 \item Strict \texttt{Control.Monad.Par} for parallelism.
 \end{itemize}
 \begin{figure}
 \centering
 \includegraphics[width=0.9\linewidth]{../tree}
-\caption{Four experiments at differing parallelism granularities.}
+\caption{Tree structure of Rasterific with our experiments.}
 \end{figure}
 \end{frame}
 
 \begin{frame}[c]{Decomposition of \texttt{Primitives}}
   \begin{itemize}
-  \item Fine grained parallelism.
-  \item Simple divide-and-conquer -- straightforward implementaion.
+  \item Fine-grained parallelism.
+  \item Simple divide-and-conquer -- straightforward implementation.
   \end{itemize}
   \begin{figure}[h!]
     \centering
@@ -84,7 +84,7 @@
 % NOTE: each experiment slide should be fairly brief during presentation -- not too many technical details, rather an explanation of parallel granularity + what we saw in threadscope
 \begin{frame}[c]{Sorting \texttt{EdgeSamples}}
   \begin{itemize}
-  \item Coarser grained parallelism.
+  \item Coarser-grained parallelism.
   \item Complex implementation.
   \end{itemize}
  \begin{figure}[h!]
@@ -98,30 +98,30 @@
 
 \end{frame}
 
-\begin{frame}[c]{Combining \texttt{EdgeSamples}}
+\begin{frame}[c]{Combining \texttt{EdgeSamples} into \texttt{CoverageSpans}}
   \begin{itemize}
-  \item Parallel across rows of EdgeSamples.
+  \item Parallel across rows of \texttt{EdgeSamples}.
   \item Refactoring introduces expensive conversions.
   \end{itemize}
  \begin{figure}[h!]
   \centering
   \includegraphics[width=0.7\linewidth,trim={0cm 2cm 0 0},clip]{../threadscope/combinegrouped/bigflake}\\
   \includegraphics[width=0.55\linewidth,trim={0 0 0 0},clip]{../threadscope/combinegrouped/sparks}
-  \caption{ThreadScope output for running the snowflake program with 500 flakes.}
+  \caption{ThreadScope output for running the \texttt{snowflake} program with 500 flakes.}
 \end{figure}
 \end{frame}
 
 \begin{frame}[c]{Filling \texttt{DrawOrders}}
   \begin{itemize}
   \item Coarsest level of parallelism in this project.
-  \item Strict evaluation forces GC.
+  \item Strict evaluation forces garbage collection.
   \end{itemize}
  \begin{figure}[h!]
   \centering
   \includegraphics[width=0.7\linewidth,trim={0cm 2cm 0 0},clip]{../threadscope/fillorder/lines}\\
   \includegraphics[width=0.3\linewidth,height=0.15\textheight,trim={0 0 0 0},clip]{../threadscope/fillorder/lines-spark-sizes}
     \includegraphics[width=0.4\linewidth,height=0.15\textheight,trim={0 0 0 0},clip]{../threadscope/fillorder/lines-spark}
-  \caption{ThreadScope output for running the lines program with 5000 lines.}
+  \caption{ThreadScope output for running the \texttt{lines} program with 5000 lines.}
 \end{figure}
 \end{frame}
 
@@ -131,9 +131,9 @@
   \begin{tabular}{l}
   \parbox{0.3\linewidth}{
   \begin{itemize}[leftmargin=0cm]
-   \item bigsquare:\newline 1 \texttt{DrawOrder}\newline 104626 \texttt{EdgeSamples}
-   \item lines:\newline 1000 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
-   \item snowflakes:\newline 500 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
+   \item \texttt{bigsquare}:\newline 1 \texttt{DrawOrder}\newline 104626 \texttt{EdgeSamples}
+   \item \texttt{lines}:\newline 1000 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
+   \item \texttt{snowflakes}:\newline 500 \texttt{DrawOrders}\newline <2000 \texttt{EdgeSamples}
   \end{itemize}
   }
   \end{tabular} &
@@ -149,26 +149,26 @@ Original, sequential version beats all our attempts. Why?\\
 
 Fine-grained parallelism:
 \begin{itemize}
-\item Too little work
-\item Too much overhead in data structure conversion
+\item Too little work.
+\item Too much overhead in data structure conversion.
 \end{itemize}
 \bigskip
 
 Coarse-grained parallelism:
 \begin{itemize}
-\item GC overhead -- strictness causes memory strain
-\item Nested parallelism
+\item GC overhead -- strictness causes memory strain.
+\item Nested parallelism.
 \end{itemize}
 \end{frame}
 
 \begin{frame}[c]{Further Work}
 
 \begin{itemize}
-\item Parallel sorting with ST
-\item Chunking small workloads / dynamic strategy
-\item Parallel concatMap
-\item Use non-strict parallelism
-\item Refactor Rasterific for strictness or flatness
+\item Parallel sorting with \texttt{ST}.
+\item Chunking small workloads / dynamic strategy.
+\item Parallel \texttt{concatMap}.
+\item Use non-strict parallelism.
+\item Refactor Rasterific for strictness or flatness.
 \item ...
 \end{itemize}
 \end{frame}
